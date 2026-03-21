@@ -7,7 +7,7 @@ use crate::structs::{ConsulEntry, ServiceIP};
 
 pub async fn fetch_nodes(profile: &str, services: Vec<&str>) -> anyhow::Result<Vec<Service>> {
     
-    let consul_url = format!("http://nest-consul-{}.nest.r53.xcal.tv:8500/", profile);
+    let consul_url = format!("http://nest-consul-{}.com:8500/", profile);
 
     let mut join_set = JoinSet::new();
     for service in services {
