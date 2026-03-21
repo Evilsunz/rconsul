@@ -90,7 +90,7 @@ fn render(frame: &mut Frame, app: &mut AppState) {
 
     let title = Paragraph::new(vec![
         Line::from("+++++ RCONSUL +++++").bold(),
-        Line::from(" (Up/Down to move, Space/Enter to toggle, q to quit)")
+        Line::from(" (Up/Down to move, Space/Enter to toggle, x to copy selected service IPs to clipboard, q to quit)")
     ]).style(Style::default().fg(Color::Green));
     frame.render_widget(title.centered(), top);
 
@@ -115,7 +115,7 @@ fn render_error(frame: &mut Frame, visible: bool) {
 
     let title = Paragraph::new(vec![
         Line::from("+++++ RCONSUL +++++").bold(),
-        Line::from(" (Up/Down to move, Space/Enter to toggle, q to quit)"),
+        Line::from(" (Up/Down to move, Space/Enter to toggle, x to copy selected service IPs to clipboard, q to quit)"),
     ])
         .style(Style::default().fg(Color::Green));
     frame.render_widget(title.centered(), top);
