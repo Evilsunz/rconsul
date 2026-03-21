@@ -1,9 +1,11 @@
+use std::io;
+use std::io::Write;
 use crossterm::event::KeyCode;
 use serde::Deserialize;
 use tui_scrollview::ScrollViewState;
 
 pub struct CheckboxState {
-    pub env: String, 
+    pub env: String,
     pub selected: usize,
     pub offset: usize,
     pub services: Vec<Service>,
@@ -32,6 +34,7 @@ impl AppState {
                 self.checkbox.move_down();
                 self.checkbox.scroll_into_view(visible_rows);
             },
+            KeyCode::Char('x') => self.checkbox.copy_selected_to_clipboard(),
             KeyCode::Enter | KeyCode::Char(' ') => self.checkbox.toggle_selected(),
             _ => {}
         }
@@ -77,6 +80,17 @@ impl CheckboxState {
         } else if self.selected >= self.offset + visible_rows {
             self.offset = self.selected + 1 - visible_rows;
         }
+    }
+
+    fn copy_selected_to_clipboard(&mut self) {
+        use cli_clipboard;
+        let ips = self.services.iter()
+            .filter(|s| s.checked)
+            .flat_map(|s| s.ips.iter().map(|ip| ip.ip.clone()))
+            .collect::<Vec<String>>().join("\n");
+        cli_clipboard::set_contents(ips).unwrap();
+        print!("\x07");
+        let _ = io::stdout().flush();
     }
 }
 

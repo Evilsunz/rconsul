@@ -5,15 +5,9 @@ mod ui;
 use std::env;
 use std::time::{Duration, Instant};
 use crossterm::event::{self, Event, KeyCode};
-use ratatui::{
-    Frame,
-    buffer::Buffer,
-    layout::{Constraint, Layout, Rect},
-    style::{Color, Modifier, Style, Stylize},
-    text::{Line, Span},
-    widgets::{Block, Borders, StatefulWidget, Widget},
-};
-use ratatui::widgets::{BorderType, Padding, Paragraph};
+use ratatui::{Frame, buffer::Buffer, layout::{Constraint, Layout, Rect}, style::{Color, Modifier, Style, Stylize}, text::{Line, Span}, widgets::{Block, Borders, StatefulWidget, Widget}, symbols};
+use ratatui::layout::Offset;
+use ratatui::widgets::{BorderType, Padding, Paragraph, Tabs};
 use crate::consul::fetch_nodes;
 use crate::structs::{AppState, Service};
 use crate::ui::CheckboxList;
@@ -71,19 +65,6 @@ fn main() -> anyhow::Result<()> {
                 }
             }
         };
-
-        // let es = {
-        //     let index = services.iter().position(|service| service.service_name == "elasticsearch").unwrap_or(0);
-        //     &mut services[index]
-        // };
-        //
-        // for i in 0..30 {
-        //     es.ips.push(ServiceIP{
-        //         checked: false,
-        //         ip: format!("127.0.0.{}", i),
-        //         checks: vec!["critical".to_string()]
-        //     });
-        // }
         
         let mut consul_services = AppState::new(env, services);
 
@@ -93,12 +74,38 @@ fn main() -> anyhow::Result<()> {
             match event::read()? {
                 Event::Key(key) => match key.code {
                     KeyCode::Char('q') | KeyCode::Esc => break Ok(()),
-                    other => consul_services.handle_key(other,15),
+                    //KeyCode::Tab => handle tabs,
+                    other => consul_services.handle_key(other,14),
                 },
                 _ => {}
             }
         }
     })
+}
+
+fn render(frame: &mut Frame, app: &mut AppState) {
+    let constraints = [Constraint::Length(2),Constraint::Length(1), Constraint::Fill(1)];
+    let layout = Layout::vertical(constraints);
+    let [top, tabs, body] = frame.area().layout(&layout);
+
+    let title = Paragraph::new(vec![
+        Line::from("+++++ RCONSUL +++++").bold(),
+        Line::from(" (Up/Down to move, Space/Enter to toggle, q to quit)")
+    ]).style(Style::default().fg(Color::Green));
+    frame.render_widget(title.centered(), top);
+
+    let widget = CheckboxList{};
+    frame.render_stateful_widget(widget, body, &mut app.checkbox);
+    render_tabs(frame, tabs + Offset::new(1, 0), 1);
+}
+
+pub fn render_tabs(frame: &mut Frame, area: Rect, selected_tab: usize) {
+    let tabs = Tabs::new(vec!["dev", "stage", "prod"])
+        .style(Style::default().fg(Color::Green))
+        .select(selected_tab)
+        .divider(symbols::DOT)
+        .padding(" ", " ");
+    frame.render_widget(tabs, area);
 }
 
 fn render_error(frame: &mut Frame, visible: bool) {
@@ -128,19 +135,4 @@ fn render_error(frame: &mut Frame, visible: bool) {
             .borders(Borders::ALL));
 
     frame.render_widget(offline.centered(), area);
-}
-
-fn render(frame: &mut Frame, app: &mut AppState) {
-    let constraints = [Constraint::Length(2), Constraint::Fill(1)];
-    let layout = Layout::vertical(constraints);
-    let [top, body] = frame.area().layout(&layout);
-
-    let title = Paragraph::new(vec![
-        Line::from("+++++ RCONSUL +++++").bold(),
-        Line::from(" (Up/Down to move, Space/Enter to toggle, q to quit)")
-    ]).style(Style::default().fg(Color::Green));
-    frame.render_widget(title.centered(), top);
-
-    let widget = CheckboxList{};
-    frame.render_stateful_widget(widget, body, &mut app.checkbox);
 }

@@ -1,11 +1,9 @@
-use std::iter;
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Rect, Size};
 use ratatui::prelude::{Color, Line, Modifier, StatefulWidget, Style};
 use ratatui::text::Span;
 use ratatui::widgets::{Block, Borders, Paragraph, Widget};
 use tui_checkbox::Checkbox;
-use tui_scrollview::{ScrollView, ScrollViewState};
 use crate::structs::{CheckboxState, Service};
 
 pub struct CheckboxList {}
