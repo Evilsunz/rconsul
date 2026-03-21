@@ -16,7 +16,7 @@ use ratatui::style::Styled;
 use ratatui::widgets::{BorderType, Padding, Paragraph};
 use tui_checkbox::Checkbox;
 use crate::consul::fetch_nodes;
-use crate::structs::{CheckboxState, Service, ServiceIP};
+use crate::structs::{AppState, CheckboxState, Service, ServiceIP};
 use crate::ui::CheckboxList;
 
 fn main() -> anyhow::Result<()> {
@@ -75,20 +75,20 @@ fn main() -> anyhow::Result<()> {
             }
         };
 
-        let es = {
-            let index = services.iter().position(|service| service.service_name == "elasticsearch").unwrap_or(0);
-            &mut services[index]
-        };
-
-        for i in 0..30 {
-            es.ips.push(ServiceIP{
-                checked: false,
-                ip: format!("127.0.0.{}", i),
-                checks: vec!["critical".to_string()]
-            });
-        }
+        // let es = {
+        //     let index = services.iter().position(|service| service.service_name == "elasticsearch").unwrap_or(0);
+        //     &mut services[index]
+        // };
+        //
+        // for i in 0..30 {
+        //     es.ips.push(ServiceIP{
+        //         checked: false,
+        //         ip: format!("127.0.0.{}", i),
+        //         checks: vec!["critical".to_string()]
+        //     });
+        // }
         
-        let mut consul_services = CheckboxState::new_from_services(services);
+        let mut consul_services = AppState::new(services);
 
         loop {
             terminal.draw(|frame| render(frame, &mut consul_services))?;
@@ -96,7 +96,7 @@ fn main() -> anyhow::Result<()> {
             match event::read()? {
                 Event::Key(key) => match key.code {
                     KeyCode::Char('q') | KeyCode::Esc => break Ok(()),
-                    other => consul_services.handle_key(other),
+                    other => consul_services.handle_key(other,20),
                 },
                 _ => {}
             }
@@ -133,11 +133,10 @@ fn render_error(frame: &mut Frame, visible: bool) {
     frame.render_widget(offline.centered(), area);
 }
 
-fn renderXXXX(frame: &mut Frame, app: &mut CheckboxState) {
+fn render(frame: &mut Frame, app: &mut AppState) {
     let constraints = [Constraint::Length(2), Constraint::Fill(1)];
     let layout = Layout::vertical(constraints);
     let [top, body] = frame.area().layout(&layout);
-
 
     let title = Paragraph::new(vec![
         Line::from("+++++ RCONSUL +++++").bold(),
@@ -146,22 +145,5 @@ fn renderXXXX(frame: &mut Frame, app: &mut CheckboxState) {
     frame.render_widget(title.centered(), top);
 
     let widget = CheckboxList{};
-
-    frame.render_stateful_widget(widget, body, app);
-}
-
-fn render(frame: &mut Frame, app: &mut CheckboxState) {
-    let constraints = [Constraint::Length(2), Constraint::Fill(1)];
-    let layout = Layout::vertical(constraints);
-    let [top, body] = frame.area().layout(&layout);
-
-    let title = Paragraph::new(vec![
-        Line::from("+++++ RCONSUL +++++").bold(),
-        Line::from(" (Up/Down to move, Space/Enter to toggle, q to quit)"),
-    ])
-        .style(Style::default().fg(Color::Green));
-    frame.render_widget(title.centered(), top);
-
-    let widget = CheckboxList {};
-    frame.render_stateful_widget(widget, body, app);
+    frame.render_stateful_widget(widget, body, &mut app.checkbox);
 }

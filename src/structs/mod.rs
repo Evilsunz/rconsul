@@ -1,11 +1,40 @@
 use crossterm::event::KeyCode;
 use serde::Deserialize;
+use tui_scrollview::ScrollViewState;
 
 pub struct CheckboxState {
     pub selected: usize,
     pub offset: usize,
-    pub visible_rows: usize,
     pub services: Vec<Service>,
+}
+
+pub struct AppState {
+    pub checkbox: CheckboxState,
+    pub scroll: ScrollViewState,
+}
+
+impl AppState {
+    pub fn new(services: Vec<Service>) -> Self {
+        Self {
+            checkbox: CheckboxState::new_from_services(services),
+            scroll: ScrollViewState::new(),
+        }
+    }
+
+    pub fn handle_key(&mut self, key: KeyCode,visible_rows: usize) {
+        match key {
+            KeyCode::Up => {
+                self.checkbox.move_up();
+                self.checkbox.scroll_into_view(visible_rows);
+            },
+            KeyCode::Down => {
+                self.checkbox.move_down();
+                self.checkbox.scroll_into_view(visible_rows);
+            },
+            KeyCode::Enter | KeyCode::Char(' ') => self.checkbox.toggle_selected(),
+            _ => {}
+        }
+    }
 }
 
 impl CheckboxState {
@@ -14,23 +43,7 @@ impl CheckboxState {
         Self {
             selected: 0,
             offset: 0,
-            visible_rows: 0,
             services
-        }
-    }
-
-    pub fn handle_key(&mut self, key: KeyCode) {
-        match key {
-            KeyCode::Up => {
-                self.move_up();
-                self.scroll_into_view(self.visible_rows);
-            }
-            KeyCode::Down => {
-                self.move_down();
-                self.scroll_into_view(self.visible_rows);
-            }
-            KeyCode::Enter | KeyCode::Char(' ') => self.toggle_selected(),
-            _ => {}
         }
     }
 
@@ -53,6 +66,10 @@ impl CheckboxState {
     }
 
     fn scroll_into_view(&mut self, visible_rows: usize) {
+        if visible_rows == 0 {
+            return;
+        }
+
         if self.selected < self.offset {
             self.offset = self.selected;
         } else if self.selected >= self.offset + visible_rows {
