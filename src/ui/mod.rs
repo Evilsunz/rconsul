@@ -16,7 +16,7 @@ impl StatefulWidget for CheckboxList {
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         let block = Block::default()
             .borders(Borders::ALL)
-            .title("Services --> DEV")
+            .title(format!(" Services --> {} ", state.env))
             .style(Style::default().fg(Color::Green));
 
         let inner = block.inner(area);

@@ -3,6 +3,7 @@ use serde::Deserialize;
 use tui_scrollview::ScrollViewState;
 
 pub struct CheckboxState {
+    pub env: String, 
     pub selected: usize,
     pub offset: usize,
     pub services: Vec<Service>,
@@ -14,9 +15,9 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(services: Vec<Service>) -> Self {
+    pub fn new(env: String, services: Vec<Service>) -> Self {
         Self {
-            checkbox: CheckboxState::new_from_services(services),
+            checkbox: CheckboxState::new_from_services(env, services),
             scroll: ScrollViewState::new(),
         }
     }
@@ -39,8 +40,9 @@ impl AppState {
 
 impl CheckboxState {
 
-    pub fn new_from_services(services : Vec<Service>) -> Self {
+    pub fn new_from_services(env: String, services : Vec<Service>) -> Self {
         Self {
+            env,
             selected: 0,
             offset: 0,
             services

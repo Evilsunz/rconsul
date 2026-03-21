@@ -2,6 +2,7 @@ mod consul;
 mod structs;
 mod ui;
 
+use std::env;
 use std::time::{Duration, Instant};
 use crossterm::event::{self, Event, KeyCode};
 use ratatui::{
@@ -12,24 +13,20 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, Borders, StatefulWidget, Widget},
 };
-use ratatui::style::Styled;
 use ratatui::widgets::{BorderType, Padding, Paragraph};
-use tui_checkbox::Checkbox;
 use crate::consul::fetch_nodes;
-use crate::structs::{AppState, CheckboxState, Service, ServiceIP};
+use crate::structs::{AppState, Service};
 use crate::ui::CheckboxList;
 
 fn main() -> anyhow::Result<()> {
     color_eyre::install().map_err(|err| anyhow::anyhow!(err))?;
-
+    let env = env::args().nth(1).unwrap_or("dev".to_string());
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build()?;
-    let services = runtime.block_on(fetch_nodes("dev", vec!(
+    let services = runtime.block_on(fetch_nodes(&env, vec!(
         "consul",
-        // "discovery-hazelcast-5",
-        // "edith-ssheventprocessor",
-        "optical-mapping-mongo-config",
-        "optical-mapping-mongo-query-router",
-        "optical-mapping-mongo-shard",
+        // "optical-mapping-mongo-config",
+        // "optical-mapping-mongo-query-router",
+        // "optical-mapping-mongo-shard",
         "elasticsearch",
         "pipeline-hazelcast",
         "pipeline-hazelcast-gnmi",
@@ -88,7 +85,7 @@ fn main() -> anyhow::Result<()> {
         //     });
         // }
         
-        let mut consul_services = AppState::new(services);
+        let mut consul_services = AppState::new(env, services);
 
         loop {
             terminal.draw(|frame| render(frame, &mut consul_services))?;
@@ -96,7 +93,7 @@ fn main() -> anyhow::Result<()> {
             match event::read()? {
                 Event::Key(key) => match key.code {
                     KeyCode::Char('q') | KeyCode::Esc => break Ok(()),
-                    other => consul_services.handle_key(other,20),
+                    other => consul_services.handle_key(other,15),
                 },
                 _ => {}
             }
@@ -107,7 +104,7 @@ fn main() -> anyhow::Result<()> {
 fn render_error(frame: &mut Frame, visible: bool) {
     let constraints = [Constraint::Length(2), Constraint::Fill(1)];
     let layout = Layout::vertical(constraints);
-    let [top, body] = frame.area().layout(&layout);
+    let [top, _body] = frame.area().layout(&layout);
 
     let title = Paragraph::new(vec![
         Line::from("+++++ RCONSUL +++++").bold(),
