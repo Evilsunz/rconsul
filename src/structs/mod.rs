@@ -3,6 +3,8 @@ use std::io::Write;
 use crossterm::event::KeyCode;
 use serde::Deserialize;
 use tui_scrollview::ScrollViewState;
+use crate::consul::fetch_nodes;
+use crate::SERVICES;
 
 pub struct CheckboxState {
     pub env: String,
@@ -14,13 +16,19 @@ pub struct CheckboxState {
 pub struct AppState {
     pub checkbox: CheckboxState,
     pub scroll: ScrollViewState,
+    pub tab_names : Vec<String>,
+    pub tab_index : usize,
 }
 
 impl AppState {
     pub fn new(env: String, services: Vec<Service>) -> Self {
+        let tab_names = vec!("dev".to_string(),"stage".to_string(),"prod".to_string());
+        let tab_index = tab_names.iter().position(|x| x == env.as_str()).unwrap_or(0);
         Self {
             checkbox: CheckboxState::new_from_services(env, services),
             scroll: ScrollViewState::new(),
+            tab_names,
+            tab_index
         }
     }
 
@@ -38,6 +46,15 @@ impl AppState {
             KeyCode::Enter | KeyCode::Char(' ') => self.checkbox.toggle_selected(),
             _ => {}
         }
+    }
+
+    pub fn next_tab(&mut self) {
+        self.tab_index = (self.tab_index + 1) % self.tab_names.len();
+        let new_nev= self.tab_names.get(self.tab_index).unwrap_or(&"dev".to_string()).to_string();
+        self.checkbox.env = new_nev.clone();
+        let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+        let services = runtime.block_on(fetch_nodes(&new_nev, SERVICES.to_vec()));
+        self.checkbox.services = services.unwrap();
     }
 }
 

@@ -12,33 +12,35 @@ use crate::consul::fetch_nodes;
 use crate::structs::{AppState, Service};
 use crate::ui::CheckboxList;
 
+const SERVICES: &[&str] = &[
+    "consul",
+    // "optical-mapping-mongo-config",
+    // "optical-mapping-mongo-query-router",
+    // "optical-mapping-mongo-shard",
+    "elasticsearch",
+    "pipeline-hazelcast",
+    "pipeline-hazelcast-gnmi",
+    "pipeline",
+    "pipeline-alert-service",
+    "pipeline-config-service",
+    "pipeline-config-ui",
+    "pipeline-device-portal-rest-api",
+    "pipeline-snpfa-service",
+    "pipeline-grafana",
+    "pipeline-haproxy",
+    "pipeline-kibana",
+    "pipeline-validation-service",
+    "rproxy",
+];
+
 fn main() -> anyhow::Result<()> {
     color_eyre::install().map_err(|err| anyhow::anyhow!(err))?;
     let env = env::args().nth(1).unwrap_or("dev".to_string());
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build()?;
-    let services = runtime.block_on(fetch_nodes(&env, vec!(
-        "consul",
-        // "optical-mapping-mongo-config",
-        // "optical-mapping-mongo-query-router",
-        // "optical-mapping-mongo-shard",
-        "elasticsearch",
-        "pipeline-hazelcast",
-        "pipeline-hazelcast-gnmi",
-        "pipeline",
-        "pipeline-alert-service",
-        "pipeline-config-service",
-        "pipeline-config-ui",
-        "pipeline-device-portal-rest-api",
-        "pipeline-snpfa-service",
-        "pipeline-grafana",
-        "pipeline-haproxy",
-        "pipeline-kibana",
-        "pipeline-validation-service",
-        "rproxy",
-    )));
+    let services = runtime.block_on(fetch_nodes(&env, SERVICES.to_vec()));
 
     ratatui::run(|terminal| {
-        let mut services = match services {
+        let services = match services {
             Ok(services) => services,
             Err(err) => {
                 let mut visible = true;
@@ -66,16 +68,16 @@ fn main() -> anyhow::Result<()> {
             }
         };
         
-        let mut consul_services = AppState::new(env, services);
+        let mut app = AppState::new(env, services);
 
         loop {
-            terminal.draw(|frame| render(frame, &mut consul_services))?;
+            terminal.draw(|frame| render(frame, &mut app))?;
 
             match event::read()? {
                 Event::Key(key) => match key.code {
                     KeyCode::Char('q') | KeyCode::Esc => break Ok(()),
-                    //KeyCode::Tab => handle tabs,
-                    other => consul_services.handle_key(other,14),
+                    KeyCode::Tab => app.next_tab(),
+                    other => app.handle_key(other, 14),
                 },
                 _ => {}
             }
@@ -96,13 +98,13 @@ fn render(frame: &mut Frame, app: &mut AppState) {
 
     let widget = CheckboxList{};
     frame.render_stateful_widget(widget, body, &mut app.checkbox);
-    render_tabs(frame, tabs + Offset::new(1, 0), 1);
+    render_tabs(frame, tabs + Offset::new(1, 0), app);
 }
 
-pub fn render_tabs(frame: &mut Frame, area: Rect, selected_tab: usize) {
-    let tabs = Tabs::new(vec!["dev", "stage", "prod"])
+pub fn render_tabs(frame: &mut Frame, area: Rect, app: &mut AppState) {
+    let tabs = Tabs::new(app.tab_names.clone())
         .style(Style::default().fg(Color::Green))
-        .select(selected_tab)
+        .select(app.tab_index)
         .divider(symbols::DOT)
         .padding(" ", " ");
     frame.render_widget(tabs, area);
