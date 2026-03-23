@@ -1,10 +1,27 @@
+use crate::consul::fetch_nodes;
+use serde::Deserialize;
 use std::io;
 use std::io::Write;
-use crossterm::event::KeyCode;
-use serde::Deserialize;
-use tui_scrollview::ScrollViewState;
-use crate::consul::fetch_nodes;
-use crate::SERVICES;
+
+const SERVICES: &[&str] = &[
+    "consul",
+    "elasticsearch",
+    "pipeline-hazelcast",
+    "pipeline-hazelcast-gnmi",
+    "pipeline",
+    "pipeline-alert-service",
+    "pipeline-config-service",
+    "pipeline-config-ui",
+    "pipeline-device-portal-rest-api",
+    "pipeline-snpfa-service",
+    "pipeline-grafana",
+    "pipeline-haproxy",
+    "pipeline-kibana",
+    "pipeline-validation-service",
+    "rproxy",
+];
+
+pub(crate) const TAB_NAMES: &[&str] = &["dev", "stage", "prod"];
 
 pub struct CheckboxState {
     pub env: String,
@@ -14,80 +31,50 @@ pub struct CheckboxState {
 }
 
 pub struct AppState {
+    pub error: bool,
+    pub quit: bool,
     pub checkbox: CheckboxState,
-    pub scroll: ScrollViewState,
-    pub tab_names : Vec<String>,
-    pub tab_index : usize,
+    pub tab_names: Vec<String>,
+    pub tab_index: usize,
+    pub visible_rows: usize,
 }
 
-impl AppState {
-    pub fn new(env: String, services: Vec<Service>) -> Self {
-        let tab_names = vec!("dev".to_string(),"stage".to_string(),"prod".to_string());
-        let tab_index = tab_names.iter().position(|x| x == env.as_str()).unwrap_or(0);
-        Self {
-            checkbox: CheckboxState::new_from_services(env, services),
-            scroll: ScrollViewState::new(),
-            tab_names,
-            tab_index
-        }
-    }
-
-    pub fn handle_key(&mut self, key: KeyCode,visible_rows: usize) {
-        match key {
-            KeyCode::Up => {
-                self.checkbox.move_up();
-                self.checkbox.scroll_into_view(visible_rows);
-            },
-            KeyCode::Down => {
-                self.checkbox.move_down();
-                self.checkbox.scroll_into_view(visible_rows);
-            },
-            KeyCode::Char('x') => self.checkbox.copy_selected_to_clipboard(),
-            KeyCode::Enter | KeyCode::Char(' ') => self.checkbox.toggle_selected(),
-            _ => {}
-        }
-    }
-
-    pub fn next_tab(&mut self) {
-        self.tab_index = (self.tab_index + 1) % self.tab_names.len();
-        let new_nev= self.tab_names.get(self.tab_index).unwrap_or(&"dev".to_string()).to_string();
-        self.checkbox.env = new_nev.clone();
-        let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
-        let services = runtime.block_on(fetch_nodes(&new_nev, SERVICES.to_vec()));
-        self.checkbox.services = services.unwrap();
-    }
+pub(crate) fn fetch_services(env: &str) -> anyhow::Result<Vec<Service>> {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+    runtime.block_on(fetch_nodes(env, SERVICES.to_vec()))
 }
 
 impl CheckboxState {
-
-    pub fn new_from_services(env: String, services : Vec<Service>) -> Self {
+    pub fn new_from_services(env: String, services: Vec<Service>) -> Self {
         Self {
             env,
             selected: 0,
             offset: 0,
-            services
+            services,
         }
     }
 
-    fn toggle_selected(&mut self) {
+    pub(crate) fn toggle_selected(&mut self) {
         if let Some(value) = self.services.get_mut(self.selected) {
             value.checked = !value.checked;
         }
     }
 
-    fn move_up(&mut self) {
+    pub(crate) fn move_up(&mut self) {
         if self.selected > 0 {
             self.selected -= 1;
         }
     }
 
-    fn move_down(&mut self) {
+    pub(crate) fn move_down(&mut self) {
         if self.selected + 1 < self.services.len() {
             self.selected += 1;
         }
     }
 
-    fn scroll_into_view(&mut self, visible_rows: usize) {
+    pub(crate) fn scroll_into_view(&mut self, visible_rows: usize) {
         if visible_rows == 0 {
             return;
         }
@@ -99,12 +86,15 @@ impl CheckboxState {
         }
     }
 
-    fn copy_selected_to_clipboard(&mut self) {
+    pub(crate) fn copy_selected_to_clipboard(&mut self) {
         use cli_clipboard;
-        let ips = self.services.iter()
+        let ips = self
+            .services
+            .iter()
             .filter(|s| s.checked)
             .flat_map(|s| s.ips.iter().map(|ip| ip.ip.clone()))
-            .collect::<Vec<String>>().join("\n");
+            .collect::<Vec<String>>()
+            .join("\n");
         cli_clipboard::set_contents(ips).unwrap();
         print!("\x07");
         let _ = io::stdout().flush();
@@ -131,14 +121,14 @@ pub struct ConsulCheck {
     pub status: String,
 }
 
-#[derive(Debug,Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Service {
     pub checked: bool,
     pub service_name: String,
-    pub ips: Vec<ServiceIP>
+    pub ips: Vec<ServiceIP>,
 }
 
-#[derive(Debug,Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub struct ServiceIP {
     pub checked: bool,
     pub ip: String,
