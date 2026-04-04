@@ -3,7 +3,7 @@ use serde::Deserialize;
 use std::io;
 use std::io::Write;
 
-const SERVICES: &[&str] = &[
+pub(crate) const SERVICES: &[&str] = &[
     "consul",
     "elasticsearch",
     "pipeline-hazelcast",
@@ -37,13 +37,6 @@ pub struct AppState {
     pub tab_names: Vec<String>,
     pub tab_index: usize,
     pub visible_rows: usize,
-}
-
-pub(crate) fn fetch_services(env: &str) -> anyhow::Result<Vec<Service>> {
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()?;
-    runtime.block_on(fetch_nodes(env, SERVICES.to_vec()))
 }
 
 impl CheckboxState {

@@ -2,3 +2,5 @@ https://github.com/joshka/tui-scrollview
 
 
 git remote add origin https://github.com/Evilsunz/rconsul
+
+https://github.com/Oscarnordstrom/rcat/blob/main/src/clipboard.rs

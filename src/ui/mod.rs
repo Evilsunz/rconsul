@@ -19,7 +19,7 @@ impl AppState {
             .iter()
             .position(|x| x == env.as_str())
             .unwrap_or(0);
-        let (services, error) = match crate::structs::fetch_services(&env) {
+        let (services, error) = match crate::consul::fetch_services(&env) {
             Ok(services) => (services, false),
             Err(_e) => (vec!(), true)
         };
@@ -29,7 +29,7 @@ impl AppState {
             checkbox: CheckboxState::new_from_services(env, services),
             tab_names,
             tab_index,
-            visible_rows: 14,
+            visible_rows: 12,
         }
     }
 
@@ -147,7 +147,7 @@ impl AppState {
     }
 
     fn update_services(&mut self, env: &str) {
-        match crate::structs::fetch_services(env) {
+        match crate::consul::fetch_services(env) {
             Ok(services) => {
                 self.error = false;
                 self.checkbox.services = services;

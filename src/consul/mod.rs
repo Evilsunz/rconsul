@@ -37,7 +37,7 @@ async fn get_consul_nodes(
     service_name: &str,
 ) -> anyhow::Result<Service> {
     let client = Client::builder()
-        .connect_timeout(Duration::from_secs(1))
+        .connect_timeout(Duration::from_secs(2))
         //.timeout(Duration::from_secs(5))
         .build()
         .unwrap();
@@ -65,4 +65,11 @@ async fn get_consul_nodes(
         service_name: service_name.to_string(),
         ips,
     })
+}
+
+pub(crate) fn fetch_services(env: &str) -> anyhow::Result<Vec<Service>> {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+    runtime.block_on(fetch_nodes(env, crate::structs::SERVICES.to_vec()))
 }
